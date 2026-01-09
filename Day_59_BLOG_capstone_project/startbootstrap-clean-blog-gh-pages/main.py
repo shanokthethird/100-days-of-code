@@ -8,7 +8,7 @@ all_posts = requests.get(blog_url).json()
 
 @app.route('/')
 def get_all_posts():
-    return render_template("index.html")
+    return render_template("index.html", all_posts=all_posts)
 
 @app.route('/about')
 def about():
