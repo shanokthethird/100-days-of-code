@@ -6,7 +6,7 @@ app = Flask(__name__)
 def get_all_posts():
     return render_template("index.html")
 
-
+def
 
 if __name__ == "__main__":
     app.run(debug=True)
