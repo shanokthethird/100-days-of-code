@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    {% block styling %}
+        {% bootstrap.load.css() %}
+    {% endblock %}
+
+</head>
+<body>
+    {% block content %}{% endblock %}
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    {% block script %}
+        {% bootstrap.load.js() %}
+    {% endblock %}
+</body>
+</html>
