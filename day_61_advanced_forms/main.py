@@ -18,12 +18,15 @@ from flask_bootstrap import Bootstrap5
 '''
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = "smth_SmTh-smTH!"
 bootstrap=Bootstrap5(app)
 
-class MyForm(Form):
+class MyForm(FlaskForm):
     email = StringField(label='E-mail: ', validators=[InputRequired(), Email()])
     password = PasswordField(label='Password: ', validators=[InputRequired(), Length(min=8)])
     submit = SubmitField(label="Submit")
+
+
 
 @app.route("/")
 def home():
