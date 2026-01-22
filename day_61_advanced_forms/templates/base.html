@@ -6,17 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>{% block title %}{% endblock %}</title>
     <!-- Bootstrap CSS -->
-    <!-- {% block styling %}
-        {% bootstrap.load.css() %}
-    {% endblock %} -->
-
+    {% block styling %}
+    {{ bootstrap.load_css() }}
+    {% endblock %}
 </head>
 <body>
     {% block content %}{% endblock %}
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     {% block script %}
-        {% bootstrap.load.js() %}
+        {{ bootstrap.load_js() }}
     {% endblock %}
 </body>
 </html>
