@@ -1,4 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Integer, String, Float
 
 '''
 Red underlines? Install the required packages first: 
@@ -14,12 +17,33 @@ This will install the packages from requirements.txt for this project.
 '''
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///new-books-collection.db"
+db = SQLAlchemy(app)
 
-all_books = []
+class Base(DeclarativeBase):
+  pass
+
+db = SQLAlchemy(model_class=Base)
+app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///new-books-collection.db.db"
+db.init_app(app)
+    
+class Book(db.Model):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
+    author: Mapped[str] = mapped_column(String(250), nullable=False)
+    rating: Mapped[float] = mapped_column(Float, nullable=False)
+
+with app.app_context():
+    db.create_all()
+
 
 
 @app.route('/')
 def home():
+    with app.app_context():
+        result = db.session.execute(db.select(Book).order_by(Book.title))
+        all_books = result.scalars().all()
     activator=len(all_books)
     return render_template("index.html", books=all_books,activator=activator)
 
@@ -29,7 +53,11 @@ def home():
 def add():
     if request.method == "POST":
         books = request.form
-        all_books.append(books.to_dict())
+        # books = books.to_dict()
+        with app.app_context():
+            new_book = Book(title=books['title'], author=books['author'], rating=books['rating'])
+            db.session.add(new_book)
+            db.session.commit()
         return redirect(url_for('home'))
     return render_template("add.html")
 
