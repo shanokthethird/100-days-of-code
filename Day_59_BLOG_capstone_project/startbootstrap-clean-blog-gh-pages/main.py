@@ -20,7 +20,7 @@ def contact():
 
 @app.route('/post/<int:index>')
 def show_post(index):
-    return render_template("post.html", post_id=index)
+    return render_template("post.html", post_id=index, all_posts=all_posts)
 
 
 if __name__ == "__main__":
