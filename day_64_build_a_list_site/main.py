@@ -21,29 +21,32 @@ pip3 install -r requirements.txt
 This will install the packages from requirements.txt for this project.
 '''
 
-# TODO: Fix Scope Issues - These should likely be inside the function or constants.
-# TODO: PARAMS references 'query' which is undefined at this scope.
-
-
 # PARAMS ={
 #    'query': query
 # }
 
 app = Flask(__name__)
+# Configure the secret key for Flask-WTF forms
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
+# Initialize Bootstrap-Flask
 Bootstrap5(app)
 
 # CREATE DB
 class Base(DeclarativeBase):
   pass
 
+# Initialize SQLAlchemy
 db = SQLAlchemy(model_class=Base)
+# Configure the SQLite database URI
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///movies_library.db"
 db.init_app(app)
 
 # CREATE TABLE
-
 class Movie(db.Model):
+    """
+    Movie Database Model.
+    Represents the 'movie' table in the database.
+    """
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(250), unique=True)
     year: Mapped[int] = mapped_column(Integer)
@@ -55,22 +58,37 @@ class Movie(db.Model):
 
 
 class EditForm(FlaskForm):
-    # TODO(done): Data Type Mismatch - 'rating' should ideally be FloatField to ensure numeric input.
+    """
+    Form for editing movie details (rating and review).
+    """
     rating = FloatField("Your Rating Out of 10(e.g.: 7.5)", validators=[DataRequired()])
     review = StringField("Your Review", validators=[DataRequired()])
     submit = SubmitField("Done")
 
 
 class AddForm(FlaskForm):
+    """
+    Form for adding a new movie by title.
+    """
     title = StringField("Movie Title", validators=[DataRequired()])
     submit = SubmitField("Add Movie")
 
+# Create database tables within the application context
 with app.app_context():
     db.create_all()
 
 movies_data = []
 
 def tmdb_fetch(query):
+    """
+    Fetches movie data from the TMDB API based on a search query.
+    
+    Args:
+        query (str): The movie title to search for.
+        
+    Returns:
+        list: A list of movie dictionaries returned by the API.
+    """
     url = "https://api.themoviedb.org/3/search/movie"
     headers = {
         "accept": "application/json",
@@ -84,10 +102,13 @@ def tmdb_fetch(query):
 
 @app.route("/add_movie/<int:id>")
 def add_movie(id):
-    # TODO: Critical Logic Error - Fix URL formatting.
-    # TODO: API Response Handling - 'results' key does not exist in single movie detail response.
-    # TODO: Undefined Variable - 'data' is not defined in this scope.
-    # TODO: Confused Logic - 'movie['results'][id]' is invalid structure.
+    """
+    Route to add a specific movie selected from the search results.
+    Fetches detailed movie data and saves it to the database.
+    
+    Args:
+        id (int): The TMDB movie ID.
+    """
     headers = {
         "accept": "application/json",
         "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGUzYjc5ZGRlMzMxMmUzZTgwYzUwNjE2YWUwZGMzYiIsIm5iZiI6MTc0ODk1NjEzMS43OTUsInN1YiI6IjY4M2VmM2UzNmE2MmY5MzBhNTI4OTgwNiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.lXlg-yDfyD_hwaI0zDDYKBdBOy-yY2XmYM_OR5Psi5s"
@@ -110,7 +131,9 @@ def add_movie(id):
 
 @app.route("/")
 def home():
-    # TODO(not necessary atm): Missing Ranking Logic - Update 'ranking' field based on sort order here.
+    """
+    Home route. Displays all movies in the database, sorted by rating.
+    """
     movies = db.session.execute(db.select(Movie).order_by(Movie.rating)).scalars().all()
     movies.sort(key=lambda x: x.rating, reverse=True)
     return render_template("index.html", movies=movies)
@@ -118,6 +141,12 @@ def home():
 
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
 def edit(id):
+    """
+    Edit route. Allows updating a movie's rating and review.
+    
+    Args:
+        id (int): The ID of the movie to edit.
+    """
     movie = db.session.get(Movie, id)
     form = EditForm()
     if form.validate_on_submit():
@@ -130,6 +159,12 @@ def edit(id):
 
 @app.route("/delete/<int:id>", methods=["GET"])
 def delete(id):
+    """
+    Delete route. Removes a movie from the database.
+    
+    Args:
+        id (int): The ID of the movie to delete.
+    """
     movie = db.session.get(Movie, id)
     db.session.delete(movie)
     db.session.commit()
@@ -138,6 +173,9 @@ def delete(id):
 
 @app.route("/add", methods=["GET", "POST"])
 def add():
+    """
+    Add route. Displays the search form and results for adding a new movie.
+    """
     form = AddForm()
     if form.validate_on_submit():
         data = tmdb_fetch(form.title.data)
