@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Float
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, FloatField
 from wtforms.validators import DataRequired
 import requests
 
@@ -23,13 +23,7 @@ This will install the packages from requirements.txt for this project.
 
 # TODO: Fix Scope Issues - These should likely be inside the function or constants.
 # TODO: PARAMS references 'query' which is undefined at this scope.
-URL = "https://api.themoviedb.org/3/search/movie/"
 
-# TODO: Security - Move API Key to environment variable or config file.
-HEADERS = {
-    "accept": "application/json",
-    "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGUzYjc5ZGRlMzMxMmUzZTgwYzUwNjE2YWUwZGMzYiIsIm5iZiI6MTc0ODk1NjEzMS43OTUsInN1YiI6IjY4M2VmM2UzNmE2MmY5MzBhNTI4OTgwNiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.lXlg-yDfyD_hwaI0zDDYKBdBOy-yY2XmYM_OR5Psi5s"
-}
 
 # PARAMS ={
 #    'query': query
@@ -61,8 +55,8 @@ class Movie(db.Model):
 
 
 class EditForm(FlaskForm):
-    # TODO: Data Type Mismatch - 'rating' should ideally be FloatField to ensure numeric input.
-    rating = StringField("Your Rating Out of 10(e.g.: 7.5)", validators=[DataRequired()])
+    # TODO(done): Data Type Mismatch - 'rating' should ideally be FloatField to ensure numeric input.
+    rating = FloatField("Your Rating Out of 10(e.g.: 7.5)", validators=[DataRequired()])
     review = StringField("Your Review", validators=[DataRequired()])
     submit = SubmitField("Done")
 
@@ -77,9 +71,13 @@ with app.app_context():
 movies_data = []
 
 def tmdb_fetch(query):
-    # TODO: Fix Scope - pass 'query' to PARAMS here correctly.
-    PARAMS = {'query': query}
-    response = requests.get(URL, headers=HEADERS, params=PARAMS)
+    url = "https://api.themoviedb.org/3/search/movie"
+    headers = {
+        "accept": "application/json",
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGUzYjc5ZGRlMzMxMmUzZTgwYzUwNjE2YWUwZGMzYiIsIm5iZiI6MTc0ODk1NjEzMS43OTUsInN1YiI6IjY4M2VmM2UzNmE2MmY5MzBhNTI4OTgwNiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.lXlg-yDfyD_hwaI0zDDYKBdBOy-yY2XmYM_OR5Psi5s"
+    }
+    params = {'query': query}
+    response = requests.get(url, headers=headers, params=params)
     data = response.json()
     data = data['results']
     return data
@@ -90,26 +88,31 @@ def add_movie(id):
     # TODO: API Response Handling - 'results' key does not exist in single movie detail response.
     # TODO: Undefined Variable - 'data' is not defined in this scope.
     # TODO: Confused Logic - 'movie['results'][id]' is invalid structure.
-    movie = requests.get(f'"https://api.themoviedb.org/3/movie/"{id}').json()
-    movie = movie['results']
-    movie = data['release_date']
-    movie = movie['results'][id]
-    new_movie = {}
+    headers = {
+        "accept": "application/json",
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGUzYjc5ZGRlMzMxMmUzZTgwYzUwNjE2YWUwZGMzYiIsIm5iZiI6MTc0ODk1NjEzMS43OTUsInN1YiI6IjY4M2VmM2UzNmE2MmY5MzBhNTI4OTgwNiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.lXlg-yDfyD_hwaI0zDDYKBdBOy-yY2XmYM_OR5Psi5s"
+    }
+    movie = requests.get(f'https://api.themoviedb.org/3/movie/{id}', headers=headers).json()
+    new_movie = {'ranking': '', 'review': ''}
     new_movie['year'] = movie['release_date'][:4]
     new_movie['img_url'] = f'https://image.tmdb.org/t/p/w500{movie["poster_path"]}'
-    new_movie.pop('poster_path')
-    new_movie['description']= new_movie.pop('overview')
-    new_movie['rating'] = new_movie.pop('vote_average')
+    new_movie['description']= movie.pop('overview')
+    new_movie['rating'] = movie.pop('vote_average')
+    new_movie['title'] = movie.pop('title')
     new_movie = Movie(**new_movie)
-    db.session.add(new_movie)
-    db.session.commit()
-    return url_for("home")
+    try:
+        db.session.add(new_movie)
+        db.session.commit()
+        return redirect(url_for("home"))
+    except:
+        return redirect(url_for("home"))
 
 
 @app.route("/")
 def home():
-    # TODO: Missing Ranking Logic - Update 'ranking' field based on sort order here.
+    # TODO(not necessary atm): Missing Ranking Logic - Update 'ranking' field based on sort order here.
     movies = db.session.execute(db.select(Movie).order_by(Movie.rating)).scalars().all()
+    movies.sort(key=lambda x: x.rating, reverse=True)
     return render_template("index.html", movies=movies)
 
 
