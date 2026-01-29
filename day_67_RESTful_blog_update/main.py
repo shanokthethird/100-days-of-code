@@ -25,6 +25,7 @@ This will install the packages from the requirements.txt for this project.
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 Bootstrap5(app)
+ckeditor = CKEditor(app)
 
 # CREATE DATABASE
 class Base(DeclarativeBase):
@@ -44,6 +45,13 @@ class BlogPost(db.Model):
     author: Mapped[str] = mapped_column(String(250), nullable=False)
     img_url: Mapped[str] = mapped_column(String(250), nullable=False)
 
+class NewBlogPost(FlaskForm):
+    title = StringField("Blog Post Title", validators=[DataRequired()])
+    subtitle = StringField("Subtitle", validators=[DataRequired()])
+    author = StringField("Your Name", validators=[DataRequired()])
+    img_url = StringField("Blog Image URL", validators=[DataRequired(), URL()])
+    body = CKEditorField("Blog Content", validators=[DataRequired()])
+    submit = SubmitField("Submit Post")
 
 with app.app_context():
     db.create_all()
@@ -53,21 +61,90 @@ with app.app_context():
 def get_all_posts():
     # TODO: Query the database for all the posts. Convert the data to a python list.
     posts = []
+    results = db.session.execute(db.select(BlogPost).order_by(BlogPost.date.desc())).all()
+    size = len(results)
+    if size > 3:
+        results = results[:3]
+    for result in results:
+        result = result[0]
+        posts.append(result)
+        # posts.append({item for item in result.__table__.columns})
     return render_template("index.html", all_posts=posts)
 
 # TODO: Add a route so that you can click on individual posts.
-@app.route('/')
+@app.route('/<int:post_id>')
 def show_post(post_id):
     # TODO: Retrieve a BlogPost from the database based on the post_id
-    requested_post = "Grab the post from your database"
+    requested_post = db.session.execute(db.select(BlogPost).where(BlogPost.id == post_id)).scalar()
     return render_template("post.html", post=requested_post)
 
 
 # TODO: add_new_post() to create a new blog post
+@app.route("/new-post", methods = ["GET", "POST"])
+def add_new_post():
+    form = NewBlogPost()
+    if form.validate_on_submit():
+        new_post = BlogPost(
+            title=form.title.data,
+            subtitle=form.subtitle.data,
+            date=date.today().strftime("%B %d, %Y"),
+            body=form.body.data,
+            author=form.author.data,
+            img_url=form.img_url.data
+        )
+        db.session.add(new_post)
+        db.session.commit()
+        return redirect(url_for("get_all_posts"))
+    
+    return render_template("make-post.html", form=form, h1 = "New Post")
+
 
 # TODO: edit_post() to change an existing blog post
+@app.route("/edit-post/<int:post_id>", methods = ["GET", "POST"])
+def edit_post(post_id):
+    post = db.session.execute(db.select(BlogPost).where(BlogPost.id == post_id)).scalar()
+    form = NewBlogPost(
+        title=post.title,
+        subtitle=post.subtitle,
+        img_url=post.img_url,
+        author=post.author,
+        body=post.body
+    )
+    if form.validate_on_submit():
+        post.title = form.title.data
+        post.subtitle = form.subtitle.data
+        post.img_url = form.img_url.data
+        post.author = form.author.data
+        post.body = form.body.data
+        db.session.commit()
+        return redirect(url_for("show_post", post_id=post.id))
+    return render_template("make-post.html", form=form, post=post, h1 = "Edit Post")
+
+@app.route("/older")
+def older():
+    posts = []
+    results = db.session.execute(db.select(BlogPost).order_by(BlogPost.date.desc())).all()
+    size = len(results)
+    if size > 3:
+        results = results[3:]
+        for result in results:
+            result = result[0]
+            posts.append(result)
+            posts.sort(key=lambda x: x.date, reverse=True)
+        return render_template("older.html", all_posts=posts)
+    return redirect(url_for("get_all_posts"))
+
+
+
 
 # TODO: delete_post() to remove a blog post from the database
+@app.route("/delete/<int:post_id>")
+def delete_post(post_id):
+    post = db.session.execute(db.select(BlogPost).where(BlogPost.id == post_id)).scalar()
+    db.session.delete(post)
+    db.session.commit()
+    return redirect(url_for("get_all_posts"))
+
 
 # Below is the code from previous lessons. No changes needed.
 @app.route("/about")
